@@ -11,9 +11,9 @@ import java.nio.channels.SocketChannel;
 /**
  * ChatServer - Member 1 responsibility: Server Setup, TCP/IP, Addressing and Ports.
  *
- * Implements non-blocking TCP client connection acceptance.
+ * Implements graceful shutdown lifecycle and socket resource release.
  */
-public class ChatServer {
+public class ChatServer implements AutoCloseable {
 
     private final String bindAddress;
     private final int port;
@@ -60,7 +60,12 @@ public class ChatServer {
             System.out.println("=================================================");
 
         } catch (BindException e) {
+            cleanup();
             System.err.println("[ChatServer ERROR] Port " + port + " is already in use by another application.");
+            throw e;
+        } catch (IOException e) {
+            cleanup();
+            System.err.println("[ChatServer ERROR] Failed to initialize server channel: " + e.getMessage());
             throw e;
         }
     }
@@ -75,6 +80,35 @@ public class ChatServer {
             System.out.println("[ChatServer] Accepted TCP connection from: " + clientChannel.getRemoteAddress());
         }
         return clientChannel;
+    }
+
+    public synchronized void stop() {
+        if (!running) {
+            return;
+        }
+        System.out.println("[ChatServer] Shutting down server and releasing port " + port + "...");
+        cleanup();
+        System.out.println("[ChatServer] Server stopped successfully.");
+    }
+
+    private void cleanup() {
+        running = false;
+        if (serverChannel != null) {
+            try {
+                if (serverChannel.isOpen()) {
+                    serverChannel.close();
+                }
+            } catch (IOException e) {
+                System.err.println("[ChatServer WARN] Error while closing server channel: " + e.getMessage());
+            } finally {
+                serverChannel = null;
+            }
+        }
+    }
+
+    @Override
+    public void close() {
+        stop();
     }
 
     public String bindAddress() {
@@ -100,6 +134,10 @@ public class ChatServer {
 
     public boolean isRunning() {
         return running;
+    }
+
+    public boolean isOpen() {
+        return serverChannel != null && serverChannel.isOpen();
     }
 
     public ServerSocketChannel serverChannel() {
