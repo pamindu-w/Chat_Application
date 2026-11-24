@@ -6,11 +6,12 @@ import java.io.IOException;
 import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 
 /**
  * ChatServer - Member 1 responsibility: Server Setup, TCP/IP, Addressing and Ports.
  *
- * Demonstrates port binding using InetSocketAddress and port validation.
+ * Implements non-blocking TCP client connection acceptance.
  */
 public class ChatServer {
 
@@ -43,18 +44,10 @@ public class ChatServer {
         }
 
         try {
-            // 1. Open a new ServerSocketChannel (Java NIO)
             serverChannel = ServerSocketChannel.open();
-
-            // 2. Configure non-blocking mode
             serverChannel.configureBlocking(false);
-
-            // 3. Encapsulate IP address and port using InetSocketAddress
             InetSocketAddress endpoint = new InetSocketAddress(bindAddress, port);
-
-            // 4. Bind the channel's socket to the local address and port
             serverChannel.bind(endpoint);
-
             running = true;
 
             System.out.println("=================================================");
@@ -70,6 +63,18 @@ public class ChatServer {
             System.err.println("[ChatServer ERROR] Port " + port + " is already in use by another application.");
             throw e;
         }
+    }
+
+    public SocketChannel acceptConnection() throws IOException {
+        if (!running || serverChannel == null || !serverChannel.isOpen()) {
+            throw new IllegalStateException("Server is not currently running.");
+        }
+        SocketChannel clientChannel = serverChannel.accept();
+        if (clientChannel != null) {
+            clientChannel.configureBlocking(false);
+            System.out.println("[ChatServer] Accepted TCP connection from: " + clientChannel.getRemoteAddress());
+        }
+        return clientChannel;
     }
 
     public String bindAddress() {
