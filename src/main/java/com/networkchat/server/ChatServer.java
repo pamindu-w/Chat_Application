@@ -4,14 +4,20 @@ import com.networkchat.network.NetworkConfig;
 
 import java.io.IOException;
 import java.net.BindException;
+import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.Collections;
+import java.util.Enumeration;
 
 /**
  * ChatServer - Member 1 responsibility: Server Setup, TCP/IP, Addressing and Ports.
  *
- * Implements graceful shutdown lifecycle and socket resource release.
+ * Adds network interface discovery for LAN IP demonstration.
  */
 public class ChatServer implements AutoCloseable {
 
@@ -58,6 +64,7 @@ public class ChatServer implements AutoCloseable {
             System.out.println(" Channel Mode    : Non-blocking (Java NIO)");
             System.out.println(" Local Endpoint  : " + serverChannel.getLocalAddress());
             System.out.println("=================================================");
+            printNetworkInterfaces();
 
         } catch (BindException e) {
             cleanup();
@@ -109,6 +116,29 @@ public class ChatServer implements AutoCloseable {
     @Override
     public void close() {
         stop();
+    }
+
+    public static void printNetworkInterfaces() {
+        System.out.println("\nAvailable Network Interfaces on this machine:");
+        System.out.println(" - Localhost (same computer test) : 127.0.0.1");
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            if (interfaces != null) {
+                for (NetworkInterface netIf : Collections.list(interfaces)) {
+                    if (netIf.isUp() && !netIf.isLoopback()) {
+                        Enumeration<InetAddress> addresses = netIf.getInetAddresses();
+                        for (InetAddress addr : Collections.list(addresses)) {
+                            if (addr instanceof Inet4Address) {
+                                System.out.println(" - LAN IP (" + netIf.getDisplayName() + "): " + addr.getHostAddress());
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (SocketException e) {
+            System.err.println(" [!] Unable to enumerate network interfaces: " + e.getMessage());
+        }
+        System.out.println("-------------------------------------------------\n");
     }
 
     public String bindAddress() {
