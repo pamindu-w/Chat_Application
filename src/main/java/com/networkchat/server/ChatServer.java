@@ -1,12 +1,14 @@
 package com.networkchat.server;
 
 import com.networkchat.network.NetworkConfig;
+
+import java.io.IOException;
 import java.nio.channels.ServerSocketChannel;
 
 /**
  * ChatServer - Member 1 responsibility: Server Setup, TCP/IP, Addressing and Ports.
  *
- * Baseline class structure and configuration fields.
+ * Demonstrates Java NIO ServerSocketChannel initialization and non-blocking mode.
  */
 public class ChatServer {
 
@@ -28,6 +30,18 @@ public class ChatServer {
                 ? NetworkConfig.DEFAULT_BIND_ADDRESS
                 : bindAddress.trim();
         this.port = port;
+    }
+
+    public synchronized void start() throws IOException {
+        if (running) {
+            return;
+        }
+
+        // 1. Open a new ServerSocketChannel (Java NIO)
+        serverChannel = ServerSocketChannel.open();
+
+        // 2. Configure non-blocking mode
+        serverChannel.configureBlocking(false);
     }
 
     public String bindAddress() {
